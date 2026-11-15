@@ -1,0 +1,78 @@
+# Folders to leave out of Time Machine backups.
+#
+# One path per line. ~ means your home folder. Lines starting with # are
+# comments; remove the # in front of an optional path to use it.
+# Paths that don't exist on your Mac are skipped, so you can keep entries
+# for apps you don't have.
+#
+# Preview:  ./exclude.sh
+# Apply:    ./exclude.sh --apply
+
+# --- App caches: rebuilt automatically ---------------------------------------
+
+# Claude desktop app: web caches
+~/Library/Application Support/Claude/Cache
+~/Library/Application Support/Claude/Code Cache
+
+# Claude desktop app: virtual machine image (several GB), downloaded again when needed
+~/Library/Application Support/Claude/vm_bundles
+
+# Claude Code program files that the Claude app downloads
+~/Library/Application Support/Claude/claude-code
+~/Library/Application Support/Claude/claude-code-vm
+
+# Discord: web caches
+~/Library/Application Support/discord/Cache
+~/Library/Application Support/discord/Code Cache
+
+# Spotify: streaming cache
+~/Library/Application Support/Spotify/PersistentCache
+
+# Google Drive: local copies of Drive files, which live in Drive anyway.
+# Before excluding, check that Drive shows everything as synced: this folder
+# also holds uploads that haven't finished.
+~/Library/Application Support/Google/DriveFS
+
+# --- Developer tools: reinstallable ------------------------------------------
+
+# Rust toolchains (reinstall with rustup)
+~/.rustup
+
+# Caches of command-line developer tools
+~/.cache
+
+# Homebrew packages. tm-nightly.sh saves the package list to
+# ~/.config/Brewfile before each backup; reinstall with
+# `brew bundle --file ~/.config/Brewfile`.
+/opt/homebrew
+
+# Xcode Command Line Tools (reinstall with `xcode-select --install`)
+/Library/Developer/CommandLineTools
+
+# --- Downloadable content -----------------------------------------------------
+
+# GarageBand and Logic sound libraries; the apps download them again
+/Library/Application Support/GarageBand
+/Library/Application Support/Logic
+
+# --- Optional: remove the # to use --------------------------------------------
+
+# Docker Desktop's virtual disk (often tens of GB). Only if your containers,
+# images and volumes can all be recreated.
+#~/Library/Containers/com.docker.docker/Data/vms
+
+# Lightroom Classic previews, rebuilt from your photos. The file name follows
+# your catalog's name.
+#~/Pictures/Lightroom/Lightroom Catalog Previews.lrdata
+
+# Xcode build output
+#~/Library/Developer/Xcode/DerivedData
+
+# Package caches: npm, Maven, Gradle, Cargo
+#~/.npm
+#~/.m2/repository
+#~/.gradle/caches
+#~/.cargo/registry
+
+# Downloads, if it's mostly installers and files you can get again
+#~/Downloads

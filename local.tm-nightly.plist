@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.tm-nightly</string>
+	<!-- launchd doesn't expand ~ or $HOME itself, so a shell finds the script
+	     in the home folder of whoever installed it -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-c</string>
+		<string>exec "$HOME/Library/Scripts/tm-nightly.sh"</string>
+	</array>
+	<!-- every hour on the hour; the script decides whether a backup is due -->
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<!-- also at login, so a night the Mac was off gets caught up -->
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ProcessType</key>
+	<string>Background</string>
+</dict>
+</plist>
