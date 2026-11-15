@@ -106,6 +106,10 @@ The log has a line for every backup the job starts and how it ended. Hours when 
 
 The tests run the real scripts with fake versions of `tmutil`, `defaults`, `date` and the other system commands they use. They don't start backups, change Time Machine settings or show notifications, and they need nothing beyond macOS.
 
+## Contributing
+
+Changes go in through pull requests. GitHub Actions runs the tests on every pull request, and `main` accepts a merge only when they pass. Pushing to `main` directly, force-pushing and deleting `main` are blocked, for the owner too.
+
 ## Uninstall
 
 ```bash

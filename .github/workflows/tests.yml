@@ -1,0 +1,25 @@
+# Run the tests on every pull request. main only accepts changes through pull
+# requests whose tests pass (see the "main" ruleset in the repo settings).
+name: tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels the older run.
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests
+    # The scripts use macOS's own date, plutil and defaults.
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run the tests
+        run: ./tests/run.sh
