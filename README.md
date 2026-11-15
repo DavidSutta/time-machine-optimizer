@@ -45,7 +45,7 @@ You need a Time Machine backup disk that is already set up.
 1. In System Settings → General → Time Machine → Options, set **Back up frequency** to **Manually**. Otherwise Time Machine keeps its hourly backups going next to this job.
 2. Clone the repository and run the installer:
    ```bash
-   git clone git@github.com:DavidSutta/time-machine-optimizer.git
+   git clone https://github.com/DavidSutta/time-machine-optimizer.git
    cd time-machine-optimizer
    ./install.sh
    ```
