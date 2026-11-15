@@ -120,3 +120,7 @@ Then set Time Machine's **Back up frequency** back to **Automatically every hour
 - If the Mac is off or asleep at night, the backup happens during the day instead, once the last one is 26 hours old.
 - With FileVault on, scheduling the Mac to switch on at night doesn't help: it stops at the login screen, and nothing can back up until you log in.
 - Only the first Time Machine destination is checked when deciding whether a backup is due.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
