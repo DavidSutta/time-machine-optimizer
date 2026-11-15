@@ -45,7 +45,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in ''|'#'*) continue ;; esac
   case "$line" in '~'|'~/'*) line="$HOME${line#\~}" ;; esac
 
-  if printf '%s\n' "$current" | grep -Fxq -- "$line"; then
+  if grep -Fxq -- "$line" <<< "$current"; then
     status="excluded"
     to_remove+=("$line")
   elif [ -e "$line" ]; then

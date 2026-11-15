@@ -13,23 +13,31 @@
 #   --now      start a backup right away (to test the setup)
 
 set -u
-export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# System tools first, so a GNU `date` or `sed` from Homebrew can't shadow them.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin"
 
 NIGHT_START=1        # night window start hour, inclusive (local time)
-NIGHT_END=6          # night window end hour, exclusive
+NIGHT_END=6          # night window end hour, exclusive; may cross midnight (22 and 6)
 NIGHT_MIN_AGE_H=6    # in the window, skip if a backup finished this recently
 CATCHUP_AGE_H=26     # outside the window, back up anyway after this many hours
 LOGIN_DELAY_S=900    # before a catch-up, wait until the Mac has been up this long
 WARN_AGE_H=72        # notify when the last backup is older than this
-BREWFILE="$HOME/.config/Brewfile"   # refreshed before each backup; "" to skip
+BREWFILE="$HOME/.config/Brewfile"   # Homebrew package list, saved before each backup; "" to skip
 
 LOG="$HOME/Library/Logs/tm-nightly.log"
-WARN_STAMP="$HOME/Library/Logs/tm-nightly.warned"
-
-# Under launchd there's no terminal, so send error messages to the log.
-[ -t 2 ] || exec 2>>"$LOG"
+WARN_STAMP="$HOME/Library/Logs/tm-nightly.warned"   # time of the last stale-backup notification
+WARN_GAP_S=$(( 86400 - 600 ))   # one day, minus slack so the notification keeps its time of day
 
 MODE="${1:-}"
+case "$MODE" in
+  ''|--dry-run|--now) ;;
+  -h|--help) sed -n '11,13p' "$0" | cut -c3-; exit 0 ;;
+  *) echo "unknown option: $MODE (see --help)" >&2; exit 2 ;;
+esac
+
+# Under launchd there's no terminal, so send error messages to the log
+# (except for a dry run, which writes nothing).
+[ -t 2 ] || [ "$MODE" = "--dry-run" ] || exec 2>>"$LOG"
 
 log() {
   if [ "$MODE" = "--dry-run" ]; then
@@ -66,12 +74,23 @@ last_backup_epoch() {
 
 backup_running() { tmutil status 2>/dev/null | grep -q 'Running = 1'; }
 
+# Whether an hour of the day falls in the night window, which may cross midnight.
+in_night_window() {
+  if [ "$NIGHT_START" -le "$NIGHT_END" ]; then
+    [ "$1" -ge "$NIGHT_START" ] && [ "$1" -lt "$NIGHT_END" ]
+  else
+    [ "$1" -ge "$NIGHT_START" ] || [ "$1" -lt "$NIGHT_END" ]
+  fi
+}
+
 now=$(date +%s)
 hour=$((10#$(date +%H)))
 if last=$(last_backup_epoch); then
   age_h=$(( (now - last) / 3600 ))
+  age_text="${age_h}h ago"
 else
-  age_h=99999   # no backup found at all
+  age_h=99999   # no backup found: treat it as very old
+  age_text="none found"
 fi
 
 if backup_running; then
@@ -81,28 +100,35 @@ fi
 
 # Warn about stale backups, at most once a day.
 if [ "$age_h" -ge "$WARN_AGE_H" ]; then
-  if [ ! -f "$WARN_STAMP" ] || [ $(( now - $(stat -f %m "$WARN_STAMP") )) -ge 86400 ]; then
-    notify "No backup for ${age_h} hours. Is the backup disk reachable? See ~/Library/Logs/tm-nightly.log"
-    [ "$MODE" = "--dry-run" ] || touch "$WARN_STAMP"
+  last_warn=$(cat "$WARN_STAMP" 2>/dev/null)
+  case "$last_warn" in ''|*[!0-9]*) last_warn=0 ;; esac
+  if [ $(( now - last_warn )) -ge "$WARN_GAP_S" ]; then
+    if [ "$age_text" = "none found" ]; then
+      msg="No Time Machine backup found."
+    else
+      msg="No backup for ${age_h} hours."
+    fi
+    notify "$msg Is the backup disk reachable? See ~/Library/Logs/tm-nightly.log"
+    [ "$MODE" = "--dry-run" ] || echo "$now" > "$WARN_STAMP"
   fi
 fi
 
 reason=""
 if [ "$MODE" = "--now" ]; then
   reason="manual"
-elif [ "$hour" -ge "$NIGHT_START" ] && [ "$hour" -lt "$NIGHT_END" ]; then
+elif in_night_window "$hour"; then
   [ "$age_h" -ge "$NIGHT_MIN_AGE_H" ] && reason="nightly"
 elif [ "$age_h" -ge "$CATCHUP_AGE_H" ]; then
   reason="catch-up"
 fi
 
 if [ -z "$reason" ]; then
-  [ "$MODE" = "--dry-run" ] && echo "last backup ${age_h}h ago, hour ${hour}: no backup due"
+  [ "$MODE" = "--dry-run" ] && echo "last backup: ${age_text}, hour ${hour}: no backup due"
   exit 0
 fi
 
 if [ "$MODE" = "--dry-run" ]; then
-  echo "last backup ${age_h}h ago, hour ${hour}: would start a ${reason} backup"
+  echo "last backup: ${age_text}, hour ${hour}: would start a ${reason} backup"
   exit 0
 fi
 
@@ -114,19 +140,24 @@ if [ "$reason" = "catch-up" ]; then
   backup_running && exit 0
 fi
 
-# Keep a list of Homebrew packages in the backup, since /opt/homebrew is excluded.
+# If Homebrew is installed, save the package list, so the backup holds what's
+# needed to reinstall the packages (/opt/homebrew itself can then be excluded).
+# A failure here gets a notification but doesn't stop the backup.
 if [ -n "$BREWFILE" ] && command -v brew >/dev/null 2>&1; then
   mkdir -p "$(dirname "$BREWFILE")"
-  if HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --force --file="$BREWFILE" >/dev/null 2>&1; then
-    log "refreshed $BREWFILE"
+  if HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --force --file="$BREWFILE" >/dev/null 2>>"$LOG"; then
+    log "saved the Homebrew package list to $BREWFILE"
   else
-    log "could not refresh $BREWFILE (continuing)"
+    log "could not save the Homebrew package list to $BREWFILE; backing up anyway"
+    notify "Couldn't save the Homebrew package list. The backup runs anyway. See ~/Library/Logs/tm-nightly.log"
   fi
 fi
 
-log "starting ${reason} backup (last one ${age_h}h ago)"
-if tmutil startbackup --auto --block >> "$LOG" 2>&1; then
+log "starting ${reason} backup (last backup: ${age_text})"
+tmutil startbackup --auto --block >> "$LOG" 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
   log "backup finished"
 else
-  log "backup failed (exit $?)"
+  log "backup failed (exit $status)"
 fi

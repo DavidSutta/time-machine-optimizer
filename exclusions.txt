@@ -41,10 +41,15 @@
 # Caches of command-line developer tools
 ~/.cache
 
-# Homebrew packages. tm-nightly.sh saves the package list to
-# ~/.config/Brewfile before each backup; reinstall with
-# `brew bundle --file ~/.config/Brewfile`.
+# Homebrew packages: reinstall them from the package list instead, with
+# `brew bundle --file ~/.config/Brewfile`. tm-nightly.sh saves that list before
+# each backup; without the job, keep a Brewfile up to date yourself before
+# excluding this. Skipped if you don't use Homebrew.
 /opt/homebrew
+# On an Intel Mac, Homebrew lives in /usr/local instead:
+#/usr/local/Homebrew
+#/usr/local/Cellar
+#/usr/local/Caskroom
 
 # Xcode Command Line Tools (reinstall with `xcode-select --install`)
 /Library/Developer/CommandLineTools
